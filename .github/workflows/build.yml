@@ -1,0 +1,25 @@
+# Builds the standalone binaries on real Linux and macOS runners (PyInstaller can't
+# cross-compile). Download them from the run's "Artifacts" section.
+name: build
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, macos-14]   # macos-14 = Apple Silicon; add macos-13 for Intel
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: ./packaging/build.sh
+      - if: runner.os == 'macOS'
+        run: cd dist && zip -qry PeepGuard-macos.zip PeepGuard.app peepguard
+      - uses: actions/upload-artifact@v4
+        with:
+          name: peepguard-${{ matrix.os }}
+          path: |
+            dist/peepguard
+            dist/PeepGuard-macos.zip

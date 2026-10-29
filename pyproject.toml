@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "peepguard"
+version = "0.1.0"
+description = "On-device shoulder-surfing detector: blurs your screen when someone behind you is looking at it."
+requires-python = ">=3.11"
+dependencies = ["opencv-python>=4.8", "numpy>=1.24"]
+
+[project.optional-dependencies]
+shield = ["mss>=9"]          # frosted screenshot behind the shield (otherwise a plain dark card)
+dev = ["pytest>=8"]
+
+[project.scripts]
+peepguard = "peepguard.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["peepguard*"]
+
+[tool.setuptools.package-data]
+peepguard = ["models/*.onnx"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

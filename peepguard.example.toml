@@ -1,0 +1,18 @@
+# peepguard run --config peepguard.example.toml
+fps = 8
+# rotate = 270             # camera rotation: 0, 90, 180, 270 (some Mac cameras need 270)
+# flip_horizontal = false  # mirror the camera horizontally
+attention_cone_deg = 28     # widen for "anyone roughly facing me", narrow for fewer false alarms
+screen_offset_mm = 110      # webcam -> centre of screen; ~100 for 13", ~130 for 16" laptops
+hfov_deg = 70               # webcam horizontal field of view
+dwell_s = 1.2
+release_s = 1.5
+sticky = false              # true: shield waits for a key/click even after they leave
+away_lock_s = 0             # e.g. 20: also shield when you walk away from the laptop
+actions = ["log", "shield", "notify"]
+
+# Run anything on alert/clear. Env: PEEPGUARD_EVENT=alert|clear, PEEPGUARD_REASON, PEEPGUARD_ONLOOKERS
+# macOS, toggle a Focus mode you created in Shortcuts:
+# hook = "sh -c '[ \"$PEEPGUARD_EVENT\" = alert ] && shortcuts run \"Privacy On\" || shortcuts run \"Privacy Off\"'"
+# Linux/GNOME, silence notification banners:
+# hook = "sh -c 'gsettings set org.gnome.desktop.notifications show-banners $([ \"$PEEPGUARD_EVENT\" = alert ] && echo false || echo true)'"
