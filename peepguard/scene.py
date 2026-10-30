@@ -122,16 +122,26 @@ class SceneAnalyzer:
     def _pick_primary(self, tracks: list[Track]) -> Track | None:
         """A recognised owner always wins. Otherwise the largest, most central face that isn't
         a known stranger wins; the incumbent is sticky so a passer-by who leans in for a
-        moment doesn't steal the 'user' role."""
+        moment doesn't steal the 'user' role.
+
+        Special case: if there's exactly ONE face detected and recognition temporarily fails,
+        treat them as primary anyway - a lone person shouldn't trigger their own blur shield."""
         owners = [t for t in tracks if t.owner]
         if owners:
             best = max(owners, key=lambda t: t.owner_sim or 0.0)
             self._primary_id = best.id
             return best
-        tracks = [t for t in tracks if t.owner is not False]
-        if not tracks:
+        non_strangers = [t for t in tracks if t.owner is not False]
+        # If only one face is detected but recognition failed, still treat them as primary.
+        # This prevents the blur from triggering when the enrolled user is alone but
+        # temporarily misrecognized (bad angle, lighting, etc.)
+        if not non_strangers:
+            if len(tracks) == 1:
+                self._primary_id = tracks[0].id
+                return tracks[0]
             self._primary_id = None
             return None
+        tracks = non_strangers
         cx, cy = self.cam.width / 2, self.cam.height / 2
         diag = np.hypot(cx, cy)
 

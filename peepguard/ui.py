@@ -149,9 +149,9 @@ class ControlPanel:
             cv2.setMouseCallback(WINDOW, self._on_mouse)
             self._opened = True
 
-        # Check if we should show session duration dialog (after 1 minute)
+        # Check if we should show session duration dialog (after 15 seconds)
         elapsed = time.monotonic() - self._session_start
-        if not self._session_asked and elapsed >= 60:
+        if not self._session_asked and elapsed >= 15:
             self._show_session_dialog = True
             self._session_asked = True
 
@@ -415,62 +415,132 @@ class ControlPanel:
 
     # ------------------------------------------------------------ session dialogs
     def _draw_session_dialog(self, img: np.ndarray) -> None:
-        """Draw the 'How long do you need?' dialog overlay."""
+        """Draw the 'How long do you need?' dialog overlay with enhanced design."""
         h, w = img.shape[:2]
 
-        # Darken background
+        # Darken background with blur effect simulation
         overlay = img.copy()
         cv2.rectangle(overlay, (0, 0), (w, h), (0, 0, 0), -1)
-        cv2.addWeighted(overlay, 0.7, img, 0.3, 0, img)
+        cv2.addWeighted(overlay, 0.75, img, 0.25, 0, img)
 
-        # Dialog box
-        dw, dh = 340, 420
+        # Dialog dimensions - slightly larger for better spacing
+        dw, dh = 380, 460
         dx, dy = (w - dw) // 2, (h - dh) // 2
+
+        # Outer glow effect
+        for i, alpha in enumerate([0.03, 0.05, 0.08]):
+            glow_offset = (3 - i) * 4
+            glow_overlay = img.copy()
+            _rounded_rect(glow_overlay, (dx - glow_offset, dy - glow_offset),
+                         (dx + dw + glow_offset, dy + dh + glow_offset), 24, ACCENT_GREEN)
+            cv2.addWeighted(glow_overlay, alpha, img, 1 - alpha, 0, img)
+
+        # Main dialog box with subtle border
         _rounded_rect(img, (dx, dy), (dx + dw, dy + dh), 20, PANEL_BG)
+        _rounded_rect(img, (dx, dy), (dx + dw, dy + dh), 20, DIVIDER, outline=1)
 
-        # Title
-        _draw_logo(img, (dx + 32, dy + 40), 16, ACCENT_GREEN)
-        _text(img, "How long do you need?", (dx + 60, dy + 48), 0.55, TEXT_PRIMARY, 1)
-        _text(img, "Set your privacy session duration", (dx + 24, dy + 80), 0.38, TEXT_SECONDARY, 1)
+        # Header section with centered logo
+        header_h = 90
+        _draw_logo(img, (dx + dw // 2, dy + 40), 22, ACCENT_GREEN)
 
-        # Duration buttons - 2 columns
-        btn_w, btn_h = (dw - 60) // 2, 36
-        y = dy + 110
-        for i, hours in enumerate(SESSION_DURATIONS):
-            col = i % 2
-            row = i // 2
-            bx = dx + 20 + col * (btn_w + 20)
-            by = y + row * (btn_h + 10)
-            if hours < 1:
-                label = f"{int(hours * 60)} min"
-            else:
-                label = f"{hours:.1f}h" if hours != int(hours) else f"{int(hours)}h"
-            self._button(img, (bx, by, btn_w, btn_h), label, f"session_dur_{hours}", style="outline")
+        # Title centered
+        title = "How long do you need?"
+        (tw, _), _ = cv2.getTextSize(title, cv2.FONT_HERSHEY_DUPLEX, 0.6, 1)
+        _text(img, title, (dx + (dw - tw) // 2, dy + 80), 0.6, TEXT_PRIMARY, 1)
 
-        # Skip button at bottom
-        self._button(img, (dx + 20, dy + dh - 60, dw - 40, 40), "Skip (no limit)", "session_skip", style="subtle")
+        # Divider line
+        cv2.line(img, (dx + 24, dy + header_h + 10), (dx + dw - 24, dy + header_h + 10), DIVIDER, 1, cv2.LINE_AA)
+
+        # Section: Quick sessions
+        section_y = dy + header_h + 25
+        _text(img, "QUICK", (dx + 24, section_y + 12), 0.35, TEXT_MUTED, 1)
+
+        # Quick duration buttons (30min, 1h, 1.5h) - horizontal row
+        quick_durations = [0.5, 1, 1.5]
+        btn_w_small = (dw - 72) // 3
+        btn_h = 38
+        for i, hours in enumerate(quick_durations):
+            bx = dx + 24 + i * (btn_w_small + 12)
+            by = section_y + 22
+            label = "30 min" if hours == 0.5 else f"{hours:.1f}h" if hours != int(hours) else f"{int(hours)}h"
+            self._button(img, (bx, by, btn_w_small, btn_h), label, f"session_dur_{hours}", style="outline")
+
+        # Section: Standard sessions
+        section_y += 80
+        _text(img, "STANDARD", (dx + 24, section_y + 12), 0.35, TEXT_MUTED, 1)
+
+        # Standard duration buttons (2h, 3h, 4h) - horizontal row
+        standard_durations = [2, 3, 4]
+        for i, hours in enumerate(standard_durations):
+            bx = dx + 24 + i * (btn_w_small + 12)
+            by = section_y + 22
+            label = f"{int(hours)}h"
+            self._button(img, (bx, by, btn_w_small, btn_h), label, f"session_dur_{hours}", style="outline")
+
+        # Section: Extended sessions
+        section_y += 80
+        _text(img, "EXTENDED", (dx + 24, section_y + 12), 0.35, TEXT_MUTED, 1)
+
+        # Extended duration buttons (5h, 6h, 8h) - horizontal row
+        extended_durations = [5, 6, 8]
+        for i, hours in enumerate(extended_durations):
+            bx = dx + 24 + i * (btn_w_small + 12)
+            by = section_y + 22
+            label = f"{int(hours)}h"
+            self._button(img, (bx, by, btn_w_small, btn_h), label, f"session_dur_{hours}", style="outline")
+
+        # Bottom section with skip button
+        skip_y = dy + dh - 70
+        cv2.line(img, (dx + 24, skip_y - 10), (dx + dw - 24, skip_y - 10), DIVIDER, 1, cv2.LINE_AA)
+        self._button(img, (dx + 24, skip_y, dw - 48, 44), "Continue without limit", "session_skip", style="subtle")
 
     def _draw_session_ended_dialog(self, img: np.ndarray) -> None:
-        """Draw the session ended reminder dialog."""
+        """Draw the session ended reminder dialog with enhanced design."""
         h, w = img.shape[:2]
 
         # Darken background
         overlay = img.copy()
         cv2.rectangle(overlay, (0, 0), (w, h), (0, 0, 0), -1)
-        cv2.addWeighted(overlay, 0.7, img, 0.3, 0, img)
+        cv2.addWeighted(overlay, 0.75, img, 0.25, 0, img)
 
-        # Dialog box
-        dw, dh = 320, 220
+        # Dialog dimensions
+        dw, dh = 360, 260
         dx, dy = (w - dw) // 2, (h - dh) // 2
+
+        # Outer glow effect (amber for warning)
+        for i, alpha in enumerate([0.03, 0.05, 0.08]):
+            glow_offset = (3 - i) * 4
+            glow_overlay = img.copy()
+            _rounded_rect(glow_overlay, (dx - glow_offset, dy - glow_offset),
+                         (dx + dw + glow_offset, dy + dh + glow_offset), 24, ACCENT_AMBER)
+            cv2.addWeighted(glow_overlay, alpha, img, 1 - alpha, 0, img)
+
+        # Main dialog box with subtle border
         _rounded_rect(img, (dx, dy), (dx + dw, dy + dh), 20, PANEL_BG)
+        _rounded_rect(img, (dx, dy), (dx + dw, dy + dh), 20, DIVIDER, outline=1)
 
-        # Icon and title
-        _draw_logo(img, (dx + dw // 2, dy + 50), 24, ACCENT_AMBER)
-        _text(img, "Session Complete", (dx + 24, dy + 100), 0.55, TEXT_PRIMARY, 1)
-        _text(img, "Your privacy session has ended.", (dx + 24, dy + 130), 0.4, TEXT_SECONDARY, 1)
-        _text(img, "Still need protection?", (dx + 24, dy + 155), 0.4, TEXT_SECONDARY, 1)
+        # Centered icon
+        _draw_logo(img, (dx + dw // 2, dy + 50), 26, ACCENT_AMBER)
 
-        # Buttons
-        btn_w = (dw - 50) // 2
-        self._button(img, (dx + 15, dy + dh - 55, btn_w, 40), "Continue", "session_continue", style="accent")
-        self._button(img, (dx + 25 + btn_w, dy + dh - 55, btn_w, 40), "Quit", "session_quit", style="subtle")
+        # Title centered
+        title = "Session Complete"
+        (tw, _), _ = cv2.getTextSize(title, cv2.FONT_HERSHEY_DUPLEX, 0.65, 1)
+        _text(img, title, (dx + (dw - tw) // 2, dy + 100), 0.65, TEXT_PRIMARY, 1)
+
+        # Subtitle centered
+        subtitle = "Your privacy session has ended"
+        (tw, _), _ = cv2.getTextSize(subtitle, cv2.FONT_HERSHEY_DUPLEX, 0.42, 1)
+        _text(img, subtitle, (dx + (dw - tw) // 2, dy + 130), 0.42, TEXT_SECONDARY, 1)
+
+        # Question centered
+        question = "Need more time?"
+        (tw, _), _ = cv2.getTextSize(question, cv2.FONT_HERSHEY_DUPLEX, 0.42, 1)
+        _text(img, question, (dx + (dw - tw) // 2, dy + 155), 0.42, TEXT_MUTED, 1)
+
+        # Divider
+        cv2.line(img, (dx + 24, dy + 175), (dx + dw - 24, dy + 175), DIVIDER, 1, cv2.LINE_AA)
+
+        # Buttons with better spacing
+        btn_w = (dw - 60) // 2
+        self._button(img, (dx + 20, dy + dh - 60, btn_w, 44), "Continue", "session_continue", style="accent")
+        self._button(img, (dx + 30 + btn_w, dy + dh - 60, btn_w, 44), "Quit", "session_quit", style="outline")
